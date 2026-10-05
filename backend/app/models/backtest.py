@@ -4,10 +4,10 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Date, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base, Money, Qty
+from app.models.base import Base, Money, Qty, UTCDateTime
 
 
 class Backtest(Base):
@@ -27,8 +27,8 @@ class Backtest(Base):
     warnings: Mapped[list[Any]] = mapped_column(default=list)
     error: Mapped[str | None] = mapped_column(Text)
     model_version: Mapped[str] = mapped_column(String(32))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
 
 class BacktestTrade(Base):

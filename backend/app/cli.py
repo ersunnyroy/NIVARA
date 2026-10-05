@@ -69,11 +69,16 @@ def _bootstrap_admin(db) -> None:
 
 
 def _create_admin(db, email: str, password: str, quiet_if_exists: bool = False) -> None:
+    from email_validator import EmailNotValidError, validate_email
     from sqlalchemy import select
 
     from app.core.security import hash_password, password_problems
     from app.models import User
 
+    try:
+        validate_email(email, check_deliverability=False)
+    except EmailNotValidError as e:
+        raise SystemExit(f"Invalid email: {e}") from e
     if db.scalar(select(User).where(User.email == email.lower())):
         if not quiet_if_exists:
             print("User already exists")

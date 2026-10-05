@@ -11,7 +11,7 @@ from app.models import Stock
 
 JOBS = ["seed", "securities", "holidays", "eod", "backfill", "fno", "fno_snapshots", "flows", "news",
         "corporate_actions", "event_calendar", "fundamentals", "breadth", "regime", "scan", "outcomes", "alerts",
-        "paper", "pre_market", "post_market"]
+        "paper", "pre_market", "post_market", "replay"]
 
 
 def _d(v, default: date | None = None) -> date | None:
@@ -65,6 +65,8 @@ def run_named_job(db: Session, job: str, params: dict) -> dict:
         end = _d(params.get("end"), today_ist() - timedelta(days=1))
         start = _d(params.get("start"), end - timedelta(days=int(params.get("days", 400))))
         return ingestion.backfill_eod(db, start, end)
+    if job == "replay":
+        return replay(db, _d(params.get("start")), _d(params.get("end")), int(params.get("every", 1)))
     if job == "flows":
         return ingestion.ingest_flows(db)
     if job == "news":
@@ -97,3 +99,29 @@ def run_named_job(db: Session, job: str, params: dict) -> dict:
 
         return post_market(_d(params.get("date")))
     return {"error": "unhandled"}
+
+
+def replay(db: Session, start: date | None, end: date | None, every: int = 1) -> dict:
+    """Re-run the scanner for past sessions using only data available at each session (point-in-time).
+    Runs are tagged trigger='replay' and reported separately from live recommendations."""
+    from sqlalchemy import func
+
+    from app.models import OHLCV, ScanRun
+    from app.services.market import compute_and_store_regime, compute_breadth
+    from app.services.outcomes_service import update_outcomes
+    from app.services.scanner import run_scan
+
+    days = [d for (d,) in db.execute(select(OHLCV.date).distinct().order_by(OHLCV.date))]
+    end = end or db.scalar(select(func.max(OHLCV.date)))
+    start = start or (days[-60] if len(days) > 60 else days[0])
+    todo = [d for d in days if start <= d <= end][::max(every, 1)]
+    done = []
+    for d in todo:
+        if db.scalar(select(ScanRun).where(ScanRun.trigger == "replay",
+                                           ScanRun.data_as_of.is_not(None)).where(func.date(ScanRun.data_as_of) == d)):
+            continue
+        compute_breadth(db, d)
+        compute_and_store_regime(db, d)
+        run = run_scan(db, as_of=d, trigger="replay")
+        done.append({"as_of": d.isoformat(), "status": run.status, "eligible": run.eligible_count})
+    return {"replayed": len(done), "runs": done[-10:], "outcomes": update_outcomes(db)}

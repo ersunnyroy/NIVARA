@@ -23,6 +23,7 @@ from app.market_calendar.calendar import CLOSE, MarketCalendar, load_calendar
 from app.models import (
     OHLCV,
     EventCalendar,
+    MarketRegime,
     NewsItem,
     Recommendation,
     RecommendationOutcome,
@@ -35,7 +36,7 @@ from app.models import (
 from app.news.classify import news_component
 from app.services.fno_service import fno_component
 from app.services.fundamentals_service import fundamental_view
-from app.services.market import compute_and_store_regime, latest_regime
+from app.services.market import compute_and_store_regime
 from app.services.prices import bars_bulk, index_series
 from app.technical.indicators import INDICATOR_VERSION
 
@@ -96,14 +97,14 @@ def run_scan(db: Session, as_of: date | None = None, trigger: str = "scheduled",
         run.status = "data_unavailable"
         run.notes = ["DATA UNAVAILABLE — no market data; no recommendations generated"]
         return _save(db, run, persist)
-    if not fresh and trigger != "backfill":
+    if not fresh and trigger not in ("backfill", "replay"):
         run.status = "data_stale"
         run.notes = [f"DATA STALE — recommendation disabled. {fresh_note}"]
         return _save(db, run, persist)
 
-    regime = latest_regime(db)
-    if regime is None or regime.session_date != as_of:
-        regime = compute_and_store_regime(db, as_of) or regime
+    # Only a regime computed for this exact session may be used (a later one would leak future data).
+    regime = db.scalar(select(MarketRegime).where(MarketRegime.session_date == as_of)
+                       .order_by(MarketRegime.id.desc()).limit(1)) or compute_and_store_regime(db, as_of)
     run.regime_id = regime.id if regime else None
     regime_label = regime.regime if regime else "NEUTRAL"
     if regime is None:

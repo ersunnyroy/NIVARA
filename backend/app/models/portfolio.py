@@ -5,10 +5,10 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Date, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, Money, Qty, TimestampMixin
+from app.models.base import Base, Money, Qty, TimestampMixin, UTCDateTime
 
 
 class Portfolio(Base, TimestampMixin):
@@ -42,7 +42,7 @@ class Transaction(Base):
     source: Mapped[str] = mapped_column(String(20), default="manual")  # manual | import | paper | system
     external_id: Mapped[str | None] = mapped_column(String(80))
     notes: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
     stock = relationship("Stock", lazy="joined")
 
@@ -149,8 +149,8 @@ class PaperOrder(Base):
     target: Mapped[float | None] = mapped_column(Float)
     status: Mapped[str] = mapped_column(String(12), default="open")  # open | filled | cancelled | expired
     valid_till: Mapped[date | None] = mapped_column(Date)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    filled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    filled_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     fill_price: Mapped[float | None] = mapped_column(Float)
     fill_note: Mapped[str | None] = mapped_column(String(255))
     recommendation_id: Mapped[int | None] = mapped_column(ForeignKey("recommendations.id", ondelete="SET NULL"))

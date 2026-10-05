@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base
+from app.models.base import Base, UTCDateTime
 
 
 class Watchlist(Base):
@@ -16,7 +16,7 @@ class Watchlist(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(80))
     kind: Mapped[str] = mapped_column(String(20), default="custom")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime())
     items = relationship("WatchlistItem", cascade="all, delete-orphan", lazy="selectin")
 
 
@@ -27,7 +27,7 @@ class WatchlistItem(Base):
     watchlist_id: Mapped[int] = mapped_column(ForeignKey("watchlists.id", ondelete="CASCADE"), index=True)
     stock_id: Mapped[int] = mapped_column(ForeignKey("stocks.id", ondelete="CASCADE"))
     notes: Mapped[str | None] = mapped_column(Text)
-    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    added_at: Mapped[datetime] = mapped_column(UTCDateTime())
     stock = relationship("Stock", lazy="joined")
 
 
@@ -41,8 +41,8 @@ class Alert(Base):
     channels: Mapped[list[Any]] = mapped_column(default=lambda: ["in_app"])
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     cooldown_minutes: Mapped[int] = mapped_column(Integer, default=24 * 60)
-    last_triggered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_triggered_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime())
     stock = relationship("Stock", lazy="joined")
 
 
@@ -55,6 +55,6 @@ class AlertEvent(Base):
     title: Mapped[str] = mapped_column(String(255))
     message: Mapped[str] = mapped_column(Text)
     data: Mapped[dict[str, Any]] = mapped_column(default=dict)
-    triggered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    triggered_at: Mapped[datetime] = mapped_column(UTCDateTime(), index=True)
     delivery: Mapped[dict[str, Any]] = mapped_column(default=dict)
-    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    read_at: Mapped[datetime | None] = mapped_column(UTCDateTime())

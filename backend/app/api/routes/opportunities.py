@@ -64,8 +64,8 @@ def history(symbol: str | None = None, from_: date | None = Query(None, alias="f
 
 
 @router.get("/recommendations/track-record")
-def record(db: Session = Depends(get_db)) -> dict:
-    return track_record(db)
+def record(origin: str | None = Query(None, pattern="^(live|historical_replay)$"), db: Session = Depends(get_db)) -> dict:
+    return track_record(db, origin)
 
 
 @router.get("/recommendations/{rec_id}")

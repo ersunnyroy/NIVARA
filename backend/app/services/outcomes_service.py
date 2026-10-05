@@ -7,7 +7,7 @@ from dataclasses import asdict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Recommendation, RecommendationOutcome
+from app.models import Recommendation, RecommendationOutcome, ScanRun
 from app.recommendations.outcomes import Outcome, TradePlan, simulate
 from app.services.prices import bars
 
@@ -72,16 +72,27 @@ def _stats(items: list[tuple[Recommendation, RecommendationOutcome]]) -> dict:
     }
 
 
-def track_record(db: Session) -> dict:
+def _origin(db: Session, cache: dict, run_id: int) -> str:
+    if run_id not in cache:
+        run = db.get(ScanRun, run_id)
+        cache[run_id] = "historical_replay" if run and run.trigger in ("replay", "backfill") else "live"
+    return cache[run_id]
+
+
+def track_record(db: Session, origin: str | None = None) -> dict:
     recs = db.scalars(select(Recommendation)).unique().all()
+    cache: dict[int, str] = {}
+    if origin:
+        recs = [r for r in recs if _origin(db, cache, r.run_id) == origin]
     items = [(r, r.outcome) for r in recs]
     groups = {"by_regime": lambda r: r.market_regime or "unknown", "by_sector": lambda r: r.sector or "unknown",
               "by_strategy": lambda r: r.strategy, "by_confidence": lambda r: _bucket_conf(r.confidence),
               "by_holding": _bucket_hold, "by_model_version": lambda r: r.model_version,
-              "by_action": lambda r: r.action}
+              "by_action": lambda r: r.action, "by_origin": lambda r: _origin(db, cache, r.run_id)}
     out = {"totals": _stats(items), "note": (
         "Outcomes are simulated on official EOD bars with conservative rules (stop checked before target on the "
-        "same bar). This is the model's paper track record, not live trading performance.")}
+        "same bar). This is the model's paper track record, not live trading performance. 'historical_replay' "
+        "ideas were generated after the fact from point-in-time data and are reported separately from 'live' ideas.")}
     for name, key in groups.items():
         g = defaultdict(list)
         for r, o in items:

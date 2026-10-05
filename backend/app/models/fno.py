@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import BigInteger, Date, DateTime, Float, String
+from sqlalchemy import BigInteger, Date, Float, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base
+from app.models.base import Base, UTCDateTime
 
 
 class FnoFuture(Base):
@@ -26,7 +26,7 @@ class FnoFuture(Base):
     volume: Mapped[int] = mapped_column(BigInteger, default=0)
     lot_size: Mapped[int | None] = mapped_column(BigInteger)
     source: Mapped[str] = mapped_column(String(64))
-    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    retrieved_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
 class OptionChainRow(Base):
@@ -69,4 +69,4 @@ class FnoSnapshot(Base):
     buildup: Mapped[str | None] = mapped_column(String(24))
     interpretation: Mapped[str | None] = mapped_column(String(500))
     details: Mapped[dict[str, Any]] = mapped_column(default=dict)
-    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    computed_at: Mapped[datetime] = mapped_column(UTCDateTime())

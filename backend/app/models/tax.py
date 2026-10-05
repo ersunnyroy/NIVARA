@@ -5,10 +5,10 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base, Money
+from app.models.base import Base, Money, UTCDateTime
 
 Rate = Numeric(12, 8)
 
@@ -35,7 +35,7 @@ class TaxRule(Base):
     source_url: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
 class ChargeSchedule(Base):
@@ -51,7 +51,7 @@ class ChargeSchedule(Base):
     source_url: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
 class TaxProfile(Base):
@@ -65,4 +65,4 @@ class TaxProfile(Base):
     slab_rate_for_business_income: Mapped[Decimal | None] = mapped_column(Rate)
     carried_forward: Mapped[dict[str, Any]] = mapped_column(default=dict)  # {"STCL": x, "LTCL": y, "from_years": ...}
     broker_reported: Mapped[dict[str, Any]] = mapped_column(default=dict)  # {"2025-26": {"stcg":..,"ltcg":..}}
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime())

@@ -8,7 +8,6 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     Date,
-    DateTime,
     Float,
     ForeignKey,
     Integer,
@@ -18,7 +17,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.models.base import Base, TimestampMixin, UTCDateTime
 
 
 class Exchange(Base):
@@ -80,7 +79,7 @@ class OHLCV(Base):
     delivery_qty: Mapped[int | None] = mapped_column(BigInteger)
     delivery_pct: Mapped[float | None] = mapped_column(Float)
     source: Mapped[str] = mapped_column(String(64))
-    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    retrieved_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
 class IndexOHLCV(Base):
@@ -98,7 +97,7 @@ class IndexOHLCV(Base):
     pb: Mapped[float | None] = mapped_column(Float)
     div_yield: Mapped[float | None] = mapped_column(Float)
     source: Mapped[str] = mapped_column(String(64))
-    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    retrieved_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
 class PriceQuote(Base):
@@ -107,7 +106,7 @@ class PriceQuote(Base):
     __tablename__ = "prices"
     id: Mapped[int] = mapped_column(primary_key=True)
     stock_id: Mapped[int] = mapped_column(ForeignKey("stocks.id", ondelete="CASCADE"), index=True)
-    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    ts: Mapped[datetime] = mapped_column(UTCDateTime(), index=True)
     ltp: Mapped[float] = mapped_column(Float)
     open: Mapped[float | None] = mapped_column(Float)
     high: Mapped[float | None] = mapped_column(Float)
@@ -116,7 +115,7 @@ class PriceQuote(Base):
     volume: Mapped[int | None] = mapped_column(BigInteger)
     vwap: Mapped[float | None] = mapped_column(Float)
     source: Mapped[str] = mapped_column(String(64))
-    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    retrieved_at: Mapped[datetime] = mapped_column(UTCDateTime())
     is_delayed: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
@@ -131,7 +130,7 @@ class PriceAdjustment(Base):
     factor: Mapped[float] = mapped_column(Float)
     method: Mapped[str] = mapped_column(String(40))  # exchange_prev_close | corporate_action | manual
     note: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
 class CorporateAction(Base):
@@ -147,7 +146,7 @@ class CorporateAction(Base):
     ratio_to: Mapped[float | None] = mapped_column(Float)
     amount: Mapped[float | None] = mapped_column(Float)
     source: Mapped[str] = mapped_column(String(64))
-    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    retrieved_at: Mapped[datetime] = mapped_column(UTCDateTime())
     raw: Mapped[dict[str, Any]] = mapped_column(default=dict)
 
 
@@ -175,7 +174,7 @@ class MarketBreadth(Base):
     pct_above_200dma: Mapped[float | None] = mapped_column(Float)
     new_52w_highs: Mapped[int | None] = mapped_column(Integer)
     new_52w_lows: Mapped[int | None] = mapped_column(Integer)
-    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    computed_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
 class InstitutionalFlow(Base):
@@ -186,7 +185,7 @@ class InstitutionalFlow(Base):
     sell_value_cr: Mapped[float] = mapped_column(Float)
     net_value_cr: Mapped[float] = mapped_column(Float)
     source: Mapped[str] = mapped_column(String(64))
-    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    retrieved_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
 class SectorStrength(Base):
@@ -209,8 +208,8 @@ class MarketRegime(Base):
     __tablename__ = "market_regimes"
     id: Mapped[int] = mapped_column(primary_key=True)
     session_date: Mapped[date] = mapped_column(Date, index=True)
-    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    data_as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    computed_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    data_as_of: Mapped[datetime] = mapped_column(UTCDateTime())
     regime: Mapped[str] = mapped_column(String(20))
     score: Mapped[float] = mapped_column(Float)  # -100..+100 composite
     confidence: Mapped[float] = mapped_column(Float)  # 0-100

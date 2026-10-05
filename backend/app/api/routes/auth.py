@@ -27,11 +27,13 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 class Credentials(BaseModel):
-    email: EmailStr
+    email: str = Field(min_length=3, max_length=255)  # validated at registration, not at login
     password: str = Field(min_length=1, max_length=256)
 
 
-class RegisterIn(Credentials):
+class RegisterIn(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=256)
     full_name: str | None = Field(None, max_length=255)
 
 

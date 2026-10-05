@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, Float, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base
+from app.models.base import Base, UTCDateTime
 
 
 class FinancialResult(Base):
@@ -23,7 +23,7 @@ class FinancialResult(Base):
     is_bank: Mapped[bool] = mapped_column(Boolean, default=False)
     audited: Mapped[bool | None] = mapped_column(Boolean)
     # When the market could first know this number (point-in-time guard for backtests).
-    broadcast_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    broadcast_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), index=True)
     revenue: Mapped[float | None] = mapped_column(Float)
     other_income: Mapped[float | None] = mapped_column(Float)
     total_income: Mapped[float | None] = mapped_column(Float)
@@ -46,7 +46,7 @@ class FinancialResult(Base):
     analysis: Mapped[dict[str, Any]] = mapped_column(default=dict)
     source: Mapped[str] = mapped_column(String(64))
     source_url: Mapped[str | None] = mapped_column(Text)
-    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    retrieved_at: Mapped[datetime] = mapped_column(UTCDateTime())
     raw: Mapped[dict[str, Any]] = mapped_column(default=dict)
 
 
@@ -62,7 +62,7 @@ class FundamentalSnapshot(Base):
     score: Mapped[float | None] = mapped_column(Float)
     score_breakdown: Mapped[dict[str, Any]] = mapped_column(default=dict)
     completeness: Mapped[float] = mapped_column(Float, default=0.0)  # 0-1
-    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    computed_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
 class Shareholding(Base):
@@ -77,10 +77,10 @@ class Shareholding(Base):
     fii_pct: Mapped[float | None] = mapped_column(Float)
     dii_pct: Mapped[float | None] = mapped_column(Float)
     mf_pct: Mapped[float | None] = mapped_column(Float)
-    broadcast_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    broadcast_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     source: Mapped[str] = mapped_column(String(64))
     source_url: Mapped[str | None] = mapped_column(Text)
-    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    retrieved_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
 class EventCalendar(Base):
@@ -94,4 +94,4 @@ class EventCalendar(Base):
     purpose: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text)
     source: Mapped[str] = mapped_column(String(64))
-    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    retrieved_at: Mapped[datetime] = mapped_column(UTCDateTime())

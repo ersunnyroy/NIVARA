@@ -4,10 +4,10 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base
+from app.models.base import Base, UTCDateTime
 
 
 class ModelVersion(Base):
@@ -19,7 +19,7 @@ class ModelVersion(Base):
     params: Mapped[dict[str, Any]] = mapped_column(default=dict)
     notes: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
 class TechnicalSnapshot(Base):
@@ -29,7 +29,7 @@ class TechnicalSnapshot(Base):
     indicator_version: Mapped[str] = mapped_column(String(16), primary_key=True)
     values: Mapped[dict[str, Any]] = mapped_column(default=dict)
     patterns: Mapped[dict[str, Any]] = mapped_column(default=dict)
-    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    computed_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
 class ScanRun(Base):
@@ -38,8 +38,8 @@ class ScanRun(Base):
     __tablename__ = "recommendation_runs"
     id: Mapped[int] = mapped_column(primary_key=True)
     session_date: Mapped[date] = mapped_column(Date, index=True)  # the session the ideas are FOR
-    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    data_as_of: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    generated_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    data_as_of: Mapped[datetime | None] = mapped_column(UTCDateTime())
     status: Mapped[str] = mapped_column(String(20))  # ok | data_unavailable | data_stale | partial | error
     universe_size: Mapped[int] = mapped_column(Integer, default=0)
     eligible_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -76,8 +76,8 @@ class Recommendation(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     run_id: Mapped[int] = mapped_column(ForeignKey("recommendation_runs.id", ondelete="CASCADE"), index=True)
     session_date: Mapped[date] = mapped_column(Date, index=True)
-    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    data_as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    generated_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    data_as_of: Mapped[datetime] = mapped_column(UTCDateTime())
     rank: Mapped[int] = mapped_column(Integer)
     stock_id: Mapped[int] = mapped_column(ForeignKey("stocks.id"), index=True)
     action: Mapped[str] = mapped_column(String(8))  # BUY | WAIT | HOLD | SELL

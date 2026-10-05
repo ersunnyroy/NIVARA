@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import Boolean, Float, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base
+from app.models.base import Base, UTCDateTime
 
 
 class NewsItem(Base):
@@ -20,8 +20,8 @@ class NewsItem(Base):
     headline: Mapped[str] = mapped_column(Text)
     body: Mapped[str | None] = mapped_column(Text)
     url: Mapped[str | None] = mapped_column(Text)
-    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
-    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    published_at: Mapped[datetime] = mapped_column(UTCDateTime(), index=True)
+    retrieved_at: Mapped[datetime] = mapped_column(UTCDateTime())
     event_type: Mapped[str] = mapped_column(String(40), default="other")
     sentiment: Mapped[float] = mapped_column(Float, default=0.0)  # -1..1
     sentiment_label: Mapped[str] = mapped_column(String(12), default="neutral")
@@ -49,4 +49,4 @@ class NewsSentiment(Base):
     sentiment: Mapped[float | None] = mapped_column(Float)
     event_type: Mapped[str | None] = mapped_column(String(40))
     guardrail_flags: Mapped[list[Any]] = mapped_column(default=list)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime())
