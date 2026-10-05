@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 
 def upsert(db: Session, model, rows: Iterable[dict], conflict_cols: Sequence[str],
            update_cols: Sequence[str] | None = None, chunk: int = 2000) -> int:
-    rows = list(rows)
+    # De-duplicate on the conflict key (last wins): Postgres rejects a batch that touches the same row twice.
+    rows = list({tuple(r.get(c) for c in conflict_cols): r for r in rows}.values())
     if not rows:
         return 0
     dialect = db.get_bind().dialect.name

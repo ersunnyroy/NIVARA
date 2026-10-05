@@ -68,3 +68,12 @@ def test_corporate_action_factor():
     assert f("bonus", 1, 1) == 0.5
     assert abs(f("bonus", 1, 2) - 2 / 3) < 1e-12
     assert f("dividend", 1, 1) is None and f("split", None, 2) is None
+
+
+def test_upsert_dedupes_conflict_keys(db):
+    from app.models import Exchange
+    from app.repositories.upsert import upsert
+
+    n = upsert(db, Exchange, [{"code": "MCX", "name": "a"}, {"code": "MCX", "name": "b"}], ["code"])
+    db.commit()
+    assert n == 1 and db.get(Exchange, "MCX").name == "b"
