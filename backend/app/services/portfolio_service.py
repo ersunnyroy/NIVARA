@@ -408,3 +408,26 @@ def _best_score(db: Session) -> float | None:
         return None
     return db.scalar(select(Recommendation.score).where(Recommendation.run_id == run.id)
                      .order_by(Recommendation.score.desc()).limit(1))
+
+
+def pooled_tax_estimates(db: Session, user_id: int, portfolio_ids: list[int]) -> dict:
+    """Realized + unrealized tax for several portfolios together (one taxpayer ⇒ one exemption/set-off)."""
+    as_of = today_ist()
+    ty = fy_of(as_of)
+    rb, ce, profile = rulebook(db), charges_engine(db), tax_profile(db, user_id)
+    rows = realized_lines(db, portfolio_ids, ty) if portfolio_ids else []
+    ctx = RealizedContext(gain_lines_from_rows(db, rows), profile)
+    lots = db.scalars(select(TaxLot).where(TaxLot.portfolio_id.in_(portfolio_ids or [-1]),
+                                           TaxLot.remaining_quantity > 0)).all()
+    prices = current_prices(db, list({lot.stock_id for lot in lots}))
+    items = []
+    for pid, sid in {(lot.portfolio_id, lot.stock_id) for lot in lots}:
+        cp = prices.get(sid)
+        if cp and cp.price is not None:
+            items += [(x, Decimal(str(cp.price))) for x in _ledger(db, pid, sid, db.get(Stock, sid).symbol)]
+    unreal = unrealized_tax_estimate(items, as_of, rb, ctx, charges_engine=ce) if items else None
+    realized = summarize_realized(db, rows, profile, ty)
+    return {"tax_year": ty, "estimated_tax_realized": realized["estimated_tax"],
+            "estimated_tax_unrealized": float(unreal.estimated_tax_if_sold) if unreal else 0.0,
+            "status": unreal.status if unreal else realized["status"],
+            "incomplete_reasons": (unreal.incomplete_reasons if unreal else []) + realized["incomplete_reasons"]}

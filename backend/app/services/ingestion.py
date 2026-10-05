@@ -133,6 +133,8 @@ def ingest_eod(db: Session, session: date, create_missing: bool = True) -> dict:
         upsert(db, OHLCV, rows, ["stock_id", "date"])
         db.commit()
         n_adj = derive_adjustments(db, session, {r["stock_id"]: r for r in rows})
+        out["missing_session_suspected"] = n_adj == -1
+        n_adj = max(n_adj, 0)
         j.rows = len(rows)
         j.details = {"bars": len(rows), "adjustments": n_adj, "warnings": res.warnings,
                      "data_as_of_dt": res.provenance.data_timestamp}
@@ -186,7 +188,7 @@ def derive_adjustments(db: Session, session: date, todays: dict[int, dict]) -> i
             candidates.append((sid, ex_date, factor, pc_exchange, last_close))
     if len(candidates) > max(25, 0.05 * len(todays)):
         log.warning("adjustment detection skipped: %d candidates looks systemic (data gap?)", len(candidates))
-        return 0
+        return -1  # signals a missing session between our last stored date and `session`
     n = 0
     now = utcnow()
     for sid, ex_date, factor, pc_exchange, last_close in candidates:
@@ -258,6 +260,31 @@ def derive_adjustments_from_actions(db: Session, tolerance: float = 0.35) -> dic
             "examples_skipped": skipped[:10]}
 
 
+def _discover_special_sessions(db: Session, session: date) -> int:
+    """Exchanges occasionally trade on a weekend/holiday (e.g. Budget day, Muhurat). When `session`'s published
+    previous closes disagree with our last stored closes, probe the closed days in between for a bhavcopy."""
+    last = db.scalar(select(func.max(OHLCV.date)).where(OHLCV.date < session))
+    found = 0
+    d = (last or session - timedelta(days=4)) + timedelta(days=1)
+    while d < session:
+        try:
+            ingest_eod(db, d)
+        except DataUnavailable:
+            d += timedelta(days=1)
+            continue
+        upsert(db, MarketHoliday, [{"exchange_code": "NSE", "date": d, "segment": "CM", "is_special_session": True,
+                                    "description": "Special trading session (discovered from published bhavcopy)",
+                                    "session_open": "09:15", "session_close": "15:30", "source": "inferred"}],
+               ["exchange_code", "date", "segment"], ["is_special_session", "description", "session_open",
+                                                      "session_close"])
+        db.commit()
+        found += 1
+        d += timedelta(days=1)
+    if found:
+        ingest_eod(db, session)  # recompute derived data now that the gap is filled
+    return found
+
+
 def backfill_eod(db: Session, start: date, end: date, calendar=None) -> dict:
     """Download every session in [start, end] (cached on disk, polite rate). Missing days are skipped."""
     from app.market_calendar.calendar import load_calendar
@@ -268,8 +295,10 @@ def backfill_eod(db: Session, start: date, end: date, calendar=None) -> dict:
     while d <= end:
         if cal.is_trading_day(d):
             try:
-                ingest_eod(db, d)
+                res = ingest_eod(db, d)
                 done += 1
+                if res.get("missing_session_suspected"):
+                    done += _discover_special_sessions(db, d)
             except DataUnavailable as e:
                 skipped.append(f"{d}: {e}")
                 if d < today_ist() - timedelta(days=3):

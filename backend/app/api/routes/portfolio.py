@@ -203,6 +203,13 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
                 actions.append({"portfolio_id": p.id, "portfolio": p.name, "symbol": pos["symbol"],
                                 "action": m["action"], "severity": m["severity"], "reasons": m["reasons"][:3],
                                 "pnl_pct": m["pnl_pct"]})
+    # Tax is per taxpayer, not per portfolio: recompute it once across all live portfolios and adjust net P&L.
+    pooled = ps.pooled_tax_estimates(db, user.id, [p.id for p in ports])
+    agg["net_pnl"] += (agg["estimated_tax_unrealized"] + agg["estimated_tax_realized"]
+                       - pooled["estimated_tax_unrealized"] - pooled["estimated_tax_realized"])
+    agg["estimated_tax_unrealized"] = pooled["estimated_tax_unrealized"]
+    agg["estimated_tax_realized"] = pooled["estimated_tax_realized"]
+    agg["tax_status"], agg["tax_incomplete_reasons"] = pooled["status"], pooled["incomplete_reasons"]
     agg["net_return_pct"] = 100 * agg["net_pnl"] / agg["invested"] if agg["invested"] else None
     sev = {"critical": 0, "warning": 1, "info": 2}
     actions.sort(key=lambda a: sev.get(a["severity"], 3))
