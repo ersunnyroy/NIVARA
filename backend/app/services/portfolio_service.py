@@ -302,19 +302,28 @@ def holdings(db: Session, portfolio: Portfolio, user_id: int, include_monitor: b
     realized_summary = summarize_realized(db, realized_rows, profile, ty)
     summary = {
         "invested": float(tot["invested"]), "current_value": float(tot["value"]),
-        "unrealized_gross_pnl": float(tot["gross"]), "realized_gross_pnl": realized_summary["trading_pnl"],
+        "unrealized_gross_pnl": float(tot["gross"]), "realized_gross_pnl": realized_summary["capital_gain_gross"],
+        "realized_pnl_after_charges": realized_summary["trading_pnl"],
         "charges_incl_estimated_exit": float(tot["charges"]) + realized_summary["charges"],
         "estimated_tax_unrealized": float(tot["tax"]), "estimated_tax_realized": realized_summary["estimated_tax"],
         "tax_year": ty,
         "estimated_tax_unrealized_status": port_unreal.status if port_unreal else None,
         "estimated_tax_unrealized_incomplete_reasons": port_unreal.incomplete_reasons if port_unreal else [],
+        "estimated_tax_unrealized_note": ("Change in this tax year's estimated tax if every open position were sold now. "
+                                          "A negative value is an estimated tax saving (losses set off against gains "
+                                          "already realized this year)."),
+        "realized_scope": f"Realized figures cover tax year {ty}.",
     }
     summary["gross_pnl"] = summary["unrealized_gross_pnl"] + realized_summary["capital_gain_gross"]
     summary["net_pnl"] = (summary["unrealized_gross_pnl"] - float(tot["charges"]) - summary["estimated_tax_unrealized"]
                           + realized_summary["trading_pnl"] - summary["estimated_tax_realized"])
     summary["net_return_pct"] = 100 * summary["net_pnl"] / summary["invested"] if summary["invested"] else None
+    stamps = [p["price_as_of"] for p in positions if p.get("price_as_of")]
+    summary["data_as_of"] = min(stamps) if stamps else None  # oldest price used (conservative)
+    summary["price_kinds"] = sorted({p["price_kind"] for p in positions})
     alloc = _risk(positions, summary["current_value"])
     return {"portfolio": {"id": portfolio.id, "name": portfolio.name, "kind": portfolio.kind},
+            "data_as_of": summary["data_as_of"],
             "summary": summary, "positions": sorted(positions, key=lambda p: -(p.get("current_value") or 0)),
             "realized": realized_summary, "risk": alloc,
             "labels": {"tax": "ESTIMATED", "disclaimer": DISCLAIMER,

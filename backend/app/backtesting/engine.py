@@ -144,8 +144,21 @@ class Backtester:
             return float(c.iloc[-1] / c.iloc[-64] - 1) > 0.10
         return True  # combined / ranking: full evaluation decides
 
+    def _first_signal_session(self, sessions: list[pd.Timestamp]) -> pd.Timestamp | None:
+        """Earliest session on which a typical stock has the 210-bar warm-up the evaluator needs."""
+        firsts = sorted(f.index[210] for f in self.frames.values() if len(f) > 210)
+        if not firsts:
+            return None
+        median_first = firsts[len(firsts) // 2]
+        return next((d for d in sessions if d >= median_first), None)
+
     def run(self) -> dict:
         sessions = self._sessions()
+        first = self._first_signal_session(sessions)
+        if first is not None and sessions and first > sessions[0]:
+            self.warnings.append(f"Start moved from {sessions[0].date()} to {first.date()}: indicators need ~210 "
+                                 "sessions of history; splits are computed over the tradable period only.")
+            sessions = [d for d in sessions if d >= first]
         if len(sessions) < 40:
             raise ValueError("Not enough sessions in range for a meaningful backtest (need ≥40)")
         n = len(sessions)

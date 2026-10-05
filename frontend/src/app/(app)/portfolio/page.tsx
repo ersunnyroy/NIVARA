@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Briefcase, ChevronRight, Plus, Siren } from "lucide-react";
 import { useCreatePortfolio, usePortfolioDashboard, usePortfolioExits, usePortfolios } from "@/lib/hooks";
-import { inr, inrCompact, toNum } from "@/lib/format";
+import { inr, inrCompact } from "@/lib/format";
 import type { Portfolio, PortfolioSummary } from "@/lib/types";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ActionList } from "@/components/domain/ActionList";
@@ -115,7 +115,7 @@ function PortfolioRow({ p, s }: { p: Portfolio; s?: PortfolioSummary | null }) {
         <Pnl value={s?.gross_pnl} compact />
       </Td>
       <Td align="right">{inrCompact(s?.charges_incl_estimated_exit)}</Td>
-      <Td align="right">{s?.estimated_tax_unrealized == null && s?.estimated_tax_realized == null ? "n/a" : inrCompact((toNum(s?.estimated_tax_unrealized) ?? 0) + (toNum(s?.estimated_tax_realized) ?? 0))}</Td>
+      <Td align="right">{s?.estimated_tax_realized == null ? "n/a" : inrCompact(s.estimated_tax_realized)}</Td>
       <Td align="right" className="font-semibold">
         <Pnl value={s?.net_pnl} compact />
         <div className="text-[11px] font-normal">
@@ -227,7 +227,7 @@ export default function PortfolioPage() {
                     <Th align="right">Current</Th>
                     <Th align="right">Gross P&amp;L</Th>
                     <Th align="right">Charges</Th>
-                    <Th align="right">Est. tax</Th>
+                    <Th align="right">Est. tax (realised)</Th>
                     <Th align="right">Net P&amp;L</Th>
                   </tr>
                 </THead>

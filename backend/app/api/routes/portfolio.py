@@ -191,10 +191,12 @@ def realized(pid: int, tax_year: str | None = None, user: User = Depends(get_cur
 def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
     ports = db.scalars(select(Portfolio).where(Portfolio.user_id == user.id, Portfolio.kind == "live")).all()
     agg = dict.fromkeys(("invested", "current_value", "gross_pnl", "unrealized_gross_pnl", "realized_gross_pnl", "charges_incl_estimated_exit", "estimated_tax_unrealized", "estimated_tax_realized", "net_pnl"), 0.0)
-    actions, details = [], []
+    actions, details, stamps = [], [], []
     for p in ports:
         h = ps.holdings(db, p, user.id)
         details.append({"id": p.id, "name": p.name, "summary": h["summary"], "positions": len(h["positions"])})
+        if h.get("data_as_of"):
+            stamps.append(h["data_as_of"])
         for k in agg:
             agg[k] += h["summary"].get(k) or 0.0
         for pos in h["positions"]:
@@ -213,7 +215,7 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
     agg["net_return_pct"] = 100 * agg["net_pnl"] / agg["invested"] if agg["invested"] else None
     sev = {"critical": 0, "warning": 1, "info": 2}
     actions.sort(key=lambda a: sev.get(a["severity"], 3))
-    return j({"summary": agg, "actions": actions, "portfolios": details,
+    return j({"summary": agg, "actions": actions, "portfolios": details, "data_as_of": min(stamps) if stamps else None,
               "labels": {"tax": "ESTIMATED", "unrealized_note": "Unrealized gains are informational and not "
                                                                 "necessarily currently taxable."}})
 
