@@ -57,6 +57,7 @@ Password policy: at least 10 characters, mixed case, at least one digit.
 | POST | `/api/opportunities/run` | admin | Runs the scanner now (synchronously) with trigger `manual` |
 | GET | `/api/opportunities/runs` | user | Recent scan runs. Query `limit` (30) |
 | GET | `/api/recommendations` | user | Recommendation history. Query `symbol`, `from`, `to`, `limit` (≤ 1000) |
+| GET | `/api/simple` | user | Plain-language view: market mood, short-term ideas, long-term ideas, intraday availability, glossary. Query `refresh=true` recomputes (cached per scan run + regime) |
 | GET | `/api/recommendations/track-record` | user | Aggregated simulated outcomes. Query `origin` = `live` or `historical_replay` |
 | GET | `/api/recommendations/{rec_id}` | user | One recommendation with its run and outcome |
 

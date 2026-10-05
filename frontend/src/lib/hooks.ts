@@ -338,3 +338,5 @@ export const useRunJob = () =>
 export const useAuditLogs = (enabled = true) => useListApi<T.AuditLog>(["admin", "audit"], "/admin/audit-logs", { limit: 100 }, { enabled });
 
 export const useAdminCharges = (enabled = true) => useApi<unknown>(["admin", "charges"], "/admin/charges", undefined, { enabled });
+
+export const useSimpleView = () => useApi<T.SimpleView>(["simple"], "/simple");

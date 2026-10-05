@@ -1239,3 +1239,73 @@ export interface JobResponse {
   message?: string | null;
   [k: string]: unknown;
 }
+
+// ---------------------------------------------------------------- Simple view (plain language)
+export interface SimpleTarget {
+  price: number;
+  gain_pct: number;
+}
+export interface SimplePastIdeas {
+  ideas: number;
+  bought: number;
+  reached_first_target_pct: number;
+  hit_stop_loss_pct: number;
+  made_money_pct: number;
+  average_result_pct: number;
+  note: string;
+}
+export interface SimpleShortIdea {
+  symbol: string;
+  company: string;
+  industry?: string | null;
+  what_to_do: string;
+  tone: "buy" | "wait" | "avoid";
+  price_now: number;
+  price_as_of?: string | null;
+  price_kind?: string;
+  buy_zone: [number, number];
+  do_not_buy_above: number;
+  stop_loss: number;
+  possible_loss_pct: number;
+  targets: SimpleTarget[];
+  holding_time: string;
+  confidence: string;
+  confidence_score: number;
+  why: string[];
+  what_could_go_wrong: string[];
+  similar_past_ideas?: SimplePastIdeas | null;
+  simple_plan: string;
+  recommendation_id: number;
+}
+export interface SimpleLongIdea {
+  symbol: string;
+  company: string;
+  industry?: string | null;
+  business_quality: string;
+  business_score: number;
+  price_now: number;
+  price_as_of?: string | null;
+  latest_results?: string | null;
+  latest_results_quarter?: string | null;
+  why: string[];
+  things_to_watch: string[];
+  past_yearly_range?: { worst_pct: number; typical_pct: number; best_pct: number; biggest_fall_pct?: number; years_of_data: number; note: string } | null;
+  how_to_buy: string;
+  data_note: string;
+}
+export interface SimpleView {
+  generated_at: string;
+  market_mood?: {
+    label: string;
+    explanation: string;
+    advice: string;
+    suggested_max_invested_pct?: number | null;
+    as_of?: string | null;
+    regime: string;
+  } | null;
+  today_intraday: { status: string; message: string; how_to_enable?: string; warning?: string };
+  this_week: { status: string; message?: string; for_session?: string; data_as_of?: string; items: SimpleShortIdea[]; how_much?: string };
+  long_term: { status: string; message?: string | null; items: SimpleLongIdea[]; how_it_works?: string };
+  glossary: { term: string; meaning: string }[];
+  disclaimer: string;
+}

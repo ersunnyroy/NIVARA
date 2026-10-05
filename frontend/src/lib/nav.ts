@@ -11,6 +11,7 @@ import {
   NotebookPen,
   Receipt,
   Settings,
+  Sparkles,
   Star,
   Target,
   TestTubeDiagonal,
@@ -28,6 +29,7 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Research",
     items: [
+      { href: "/simple", label: "Simple view", icon: Sparkles },
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/market", label: "Market", icon: Activity },
       { href: "/opportunities", label: "Opportunities", icon: Target },

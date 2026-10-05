@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { BellRing, Briefcase, LineChart, Newspaper, PieChart, Target, Trophy } from "lucide-react";
+import Link from "next/link";
+import { BellRing, Briefcase, Sparkles, LineChart, Newspaper, PieChart, Target, Trophy } from "lucide-react";
 import {
   useMarketOverview,
   useNews,
@@ -32,7 +33,19 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Dashboard" description="Market context first, then ideas, then your money. Decision support — not advice." />
+      <PageHeader
+        title="Dashboard"
+        description="Market context first, then ideas, then your money. Decision support — not advice."
+        actions={
+          <Link
+            href="/simple"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent-soft px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent-soft/70"
+          >
+            <Sparkles className="size-4" aria-hidden />
+            New to stocks? Simple view
+          </Link>
+        }
+      />
 
       {/* 1. Market regime */}
       {overview.isPending ? (

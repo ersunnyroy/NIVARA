@@ -24,6 +24,13 @@ income tax.
 | **When to sell?** | Position monitor per holding (`EXIT`, `PARTIAL PROFIT`, `TRAIL STOP`, `ADD ONLY ON DIP`, `WAIT`, `HOLD`) with reasons, a sell/exit list, suggested trailing stops, alerts for stop/target/breakdown/news/regime change |
 | **How much will I actually make?** | Itemised brokerage, STT, exchange, SEBI, stamp duty, GST and DP charges from dated schedules; FIFO tax lots with split/bonus handling; STCG/LTCG/intraday classification, set-off, LTCG exemption, surcharge and cess from dated tax rules; gross → charges → pre-tax → estimated tax → net per holding and per tax year; tax-loss harvesting view |
 
+**Simple view** (`/simple`): the same outputs in plain language for everyday investors — market mood with a
+suggested maximum investment level; short-term ideas ("buy between ₹A and ₹B, sell if below ₹S, possible gain
++X% / possible loss −Y%, usually held N weeks") with how similar past ideas actually turned out; long-term ideas
+from the strongest businesses in the NIFTY 100 with good signs, things to watch, the stock's historical 1-year
+range and biggest fall; and an intraday tab that explains why no same-day ideas are given without live prices.
+It adds no new predictions — every number comes from the engines above.
+
 Supporting features: recommendation track record (simulated outcomes, live vs historical replay), backtesting with
 train/validation/test splits, paper trading with an optional auto-following model portfolio, trade journal and
 performance statistics, F&O analytics (OI buildup, PCR, max pain, IV), news from NSE announcements with

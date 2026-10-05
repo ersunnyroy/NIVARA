@@ -10,6 +10,7 @@ from app.api.routes import (
     market,
     opportunities,
     portfolio,
+    simple,
     stocks,
     tax,
     tools,
@@ -17,6 +18,6 @@ from app.api.routes import (
 )
 
 api_router = APIRouter()
-for r in (health, auth, market, opportunities, stocks, tools, portfolio, journal, tax, watch, fno_paper, backtests,
+for r in (health, auth, market, opportunities, stocks, tools, portfolio, simple, journal, tax, watch, fno_paper, backtests,
           admin):
     api_router.include_router(r.router)

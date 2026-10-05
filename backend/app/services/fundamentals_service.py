@@ -20,8 +20,11 @@ def _to_statement(r: FinancialResult, symbol: str) -> FinancialStatement:
         is_bank=r.is_bank, revenue=r.revenue, other_income=r.other_income, total_income=r.total_income,
         total_expenses=r.total_expenses, finance_costs=r.finance_costs, depreciation=r.depreciation, pbt=r.pbt,
         tax=r.tax, pat=r.pat, pat_owners=r.pat_owners, eps_basic=r.eps_basic, eps_diluted=r.eps_diluted,
-        paid_up_capital=r.paid_up_capital, face_value=r.face_value, debt_equity=r.debt_equity,
-        interest_coverage=r.interest_coverage,
+        paid_up_capital=r.paid_up_capital, face_value=r.face_value,
+        # The DebtEquityRatio / InterestServiceCoverageRatio values companies tag in quarterly result XBRL are
+        # inconsistent (verified: e.g. 0.004–0.04 for clearly leveraged companies), so they are not used.
+        # Interest coverage is derived from filed EBIT and finance costs instead.
+        debt_equity=None, interest_coverage=None,
     )
 
 
