@@ -13,4 +13,7 @@ router = APIRouter(prefix="/simple", tags=["simple"], dependencies=[Depends(get_
 
 @router.get("")
 def simple(refresh: bool = False, db: Session = Depends(get_db)) -> dict:
+    from app.services.live_market import maybe_refresh
+
+    maybe_refresh(db)
     return simple_view(db, refresh=refresh)

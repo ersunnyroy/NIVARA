@@ -169,3 +169,24 @@ The code explicitly returns "not available" for these; nothing is estimated in t
 | Surveillance (ASM/GSM) flags, suspensions | Columns exist but no ingestion job populates them |
 | FII/DII history | Endpoint returns the latest day only |
 | Holiday master for past years | Inferred from missing bhavcopies |
+
+## Free intraday snapshot (NSE public website)
+
+`app/data/nse/live.py` + `app/services/live_market.py`. During market hours (pre-open → post-close on trading days)
+the app refreshes, at most every 3 minutes and in a background thread triggered by normal use of the app (or
+`python -m app.cli job live`), these openly served endpoints:
+
+| Endpoint | Provides |
+|---|---|
+| `www.nseindia.com/api/allIndices` | Every NSE index (last, % change, OHLC, per-index advances/declines) |
+| `/api/live-analysis-variations?index=gainers` / `loosers` | Top-20 rising/falling stocks per group (NIFTY, NIFTY Next 50, F&O, all securities) |
+| `/api/live-analysis-most-active-securities?index=value` / `volume` | Most active stocks by traded value/volume |
+
+Coverage is partial (typically ~160 stocks plus all indices). Stocks covered get a `delayed_quote` price in
+`prices` (shown with a "Delayed" badge and time); every other stock keeps its official EOD close, labelled. Index
+tiles, NIFTY 500 live breadth and movers on the Market/Dashboard pages use the snapshot when it is from today.
+Regime, scores, scans and recommendations still use official end-of-day data only.
+
+Not used: NSE's per-stock quote endpoints (they sit behind bot protection — the app does not try to bypass it)
+and Yahoo Finance (rate-limited from this environment, HTTP 429). Full real-time coverage requires a broker feed
+(`UPSTOX_ACCESS_TOKEN` or `KITE_API_KEY` + `KITE_ACCESS_TOKEN`).

@@ -115,7 +115,9 @@ function ShortIdeaCard({ it }: { it: SimpleShortIdea }) {
           <div>
             <p className="text-xs text-muted">Price now</p>
             <p className="font-semibold text-fg">{inr(it.price_now)}</p>
-            <p className="text-[11px] text-muted">{it.price_kind === "eod_close" ? "last closing price" : "live"}</p>
+            <p className="text-[11px] text-muted">
+              {it.price_kind === "eod_close" ? "last closing price" : it.price_kind === "delayed_quote" ? "today, a few minutes delayed" : "live"}
+            </p>
           </div>
           <div>
             <p className="text-xs text-muted">Buy between</p>

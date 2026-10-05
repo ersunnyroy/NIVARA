@@ -61,6 +61,7 @@ export interface MarketStatus {
     is_current?: boolean;
     sessions_behind?: number | null;
     realtime_quotes?: boolean;
+    live_snapshot?: { available: boolean; as_of?: string; source?: string; covered_stocks?: number };
   } | null;
   date?: ISODate;
   is_open?: boolean;
@@ -100,6 +101,8 @@ export interface IndexQuote {
   close?: Numeric;
   change_pct?: number | null;
   date?: ISODate | null;
+  kind?: PriceKind | null;
+  eod_close?: Numeric;
 }
 
 export interface Breadth {
@@ -139,9 +142,12 @@ export interface Mover {
   close?: Numeric;
   change_pct?: number | null;
   volume?: number | null;
+  kind?: PriceKind | null;
 }
 
 export interface MarketOverview {
+  live?: { as_of: string; source: string; covered_stocks?: number; note?: string;
+           breadth_nifty500?: { advances?: number | null; declines?: number | null } | null } | null;
   status?: DataStatus;
   message?: string | null;
   regime?: Regime | null;

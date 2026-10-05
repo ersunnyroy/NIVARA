@@ -59,7 +59,7 @@ function StatusCard() {
                 ) : null}
                 <p className="text-[11px] text-muted">
                   Now: {s.now_ist ? dateTimeIST(s.now_ist) : "n/a"} · NSE session {s.hours?.open ?? "09:15"}–{s.hours?.close ?? "15:30"} IST
-                  {s.data ? ` · real-time quotes ${s.data.realtime_quotes ? "enabled" : "not configured"}` : ""} · EOD data is typically ready after the close; prices on this site are EOD closes unless marked Live.
+                  {s.data ? ` · real-time quotes ${s.data.realtime_quotes ? "enabled" : "not configured"}` : ""} · EOD data is typically ready after the close; prices are official EOD closes unless marked Delayed (free NSE intraday snapshot) or Live (broker feed).
                 </p>
               </div>
             );
@@ -75,7 +75,7 @@ export default function MarketPage() {
   const ov = q.data;
   return (
     <div className="space-y-4">
-      <PageHeader title="Market" description="Regime, breadth, institutional flows, sectors and movers — from end-of-day data." />
+      <PageHeader title="Market" description="Regime, breadth, institutional flows, sectors and movers — official end-of-day data plus a delayed intraday snapshot during market hours." />
       <StatusCard />
 
       {q.isPending ? (
@@ -89,7 +89,21 @@ export default function MarketPage() {
             <CardHeader icon={<Landmark className="size-4" />} title="Indices" />
             <CardBody>
               <IndicesStrip indices={ov?.indices} />
-              <DataStamp className="mt-2" asOf={ov?.data_as_of} kind="eod_close" source={ov?.source ?? "NSE indices"} />
+              {ov?.live ? (
+                <p className="mt-2 text-xs text-muted">
+                  Live snapshot as of {new Date(ov.live.as_of).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })} IST
+                  {ov.live.breadth_nifty500?.advances != null
+                    ? ` · NIFTY 500 now: ${ov.live.breadth_nifty500.advances} rising, ${ov.live.breadth_nifty500.declines} falling`
+                    : ""}
+                  . {ov.live.note}
+                </p>
+              ) : null}
+              <DataStamp
+                className="mt-2"
+                asOf={ov?.live?.as_of ?? ov?.data_as_of}
+                kind={ov?.live ? "delayed_quote" : "eod_close"}
+                source={ov?.live?.source ?? ov?.source ?? "NSE indices"}
+              />
             </CardBody>
           </Card>
 

@@ -40,6 +40,11 @@ export function MarketStatusPill({ className }: { className?: string }) {
       <span className="hidden md:inline">
         · EOD <span className="num text-fg/80">{s.last_completed_eod_session ? dateIST(s.last_completed_eod_session) : "n/a"}</span>
       </span>
+      {s.data?.live_snapshot?.available && s.data.live_snapshot.as_of ? (
+        <span className="hidden lg:inline" title={s.data.live_snapshot.source}>
+          · Live <span className="num text-fg/80">{new Date(s.data.live_snapshot.as_of).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })}</span>
+        </span>
+      ) : null}
       {stale ? <span className="font-semibold uppercase text-warn">{staleLabel}</span> : null}
     </span>
   );

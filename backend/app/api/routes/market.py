@@ -31,8 +31,13 @@ def status(db: Session = Depends(get_db)) -> dict:
                   "sessions_behind": cal.sessions_between(last, expected) if last and last < expected else 0,
                   "realtime_quotes": False}
     from app.data import registry
+    from app.services.live_market import live_market, maybe_refresh
 
+    maybe_refresh(db)
+    live = live_market(db)
     st["data"]["realtime_quotes"] = registry.realtime_quotes() is not None
+    st["data"]["live_snapshot"] = ({"available": True, "as_of": live["as_of"], "source": live["source"],
+                                    "covered_stocks": live["covered_stocks"]} if live else {"available": False})
     return st
 
 
@@ -55,8 +60,24 @@ def overview(db: Session = Depends(get_db)) -> dict:
     rows = {r.index_name: r for r in db.scalars(select(IndexOHLCV).where(IndexOHLCV.date == last,
                                                                          IndexOHLCV.index_name.in_(HEADLINE_INDICES)))}
     out["indices"] = [{"name": DISPLAY.get(n, n.upper()), "index_name": n, "close": rows[n].close,
-                       "change_pct": rows[n].change_pct, "date": j(rows[n].date), "source": rows[n].source}
+                       "change_pct": rows[n].change_pct, "date": j(rows[n].date), "source": rows[n].source,
+                       "kind": "eod_close"}
                       for n in HEADLINE_INDICES if n in rows]
+    from app.services.live_market import live_market, maybe_refresh
+
+    maybe_refresh(db)
+    live = live_market(db)
+    if live:
+        by_name = {i["name"].upper(): i for i in live["indices"]}
+        for ix in out["indices"]:
+            li = by_name.get(ix["index_name"].upper())
+            if li:
+                ix.update(close=li["last"], change_pct=li["change_pct"], date=live["as_of"], source=live["source"],
+                          kind="delayed_quote", eod_close=rows[ix["index_name"]].close)
+        out["live"] = {"as_of": live["as_of"], "source": live["source"], "breadth_nifty500": live["breadth_nifty500"],
+                       "covered_stocks": live["covered_stocks"],
+                       "note": "Intraday snapshot from NSE's public website, a few minutes delayed. Regime, scores and "
+                               "ideas still use official end-of-day data."}
     b = db.scalar(select(MarketBreadth).order_by(MarketBreadth.date.desc()).limit(1))
     out["breadth"] = row(b) if b else None
     out["flows"] = [row(f) for f in db.scalars(select(InstitutionalFlow).order_by(InstitutionalFlow.date.desc()).limit(10))]
@@ -75,6 +96,15 @@ def overview(db: Session = Depends(get_db)) -> dict:
         out["movers"] = {"gainers": sorted(movers, key=lambda m: -m["change_pct"])[:8],
                          "losers": sorted(movers, key=lambda m: m["change_pct"])[:8],
                          "most_active": sorted(movers, key=lambda m: -m["turnover_cr"])[:8], "date": j(od)}
+    if live:
+        names = dict(db.execute(select(Stock.symbol, Stock.name)).all())
+
+        def mv(q: dict) -> dict:
+            return {"symbol": q["symbol"], "name": names.get(q["symbol"], q["symbol"]), "close": q["ltp"],
+                    "change_pct": q["change_pct"], "volume": q["volume"], "kind": "delayed_quote"}
+
+        out["movers"] = {"gainers": [mv(q) for q in live["gainers"][:8]], "losers": [mv(q) for q in live["losers"][:8]],
+                         "most_active": [mv(q) for q in live["most_active"][:8]], "date": live["as_of"], "kind": "live"}
     out["status"] = "ok"
     return out
 

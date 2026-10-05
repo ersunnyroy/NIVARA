@@ -11,7 +11,7 @@ from app.models import Stock
 
 JOBS = ["seed", "securities", "holidays", "eod", "backfill", "fno", "fno_snapshots", "flows", "news",
         "corporate_actions", "event_calendar", "fundamentals", "breadth", "regime", "scan", "outcomes", "alerts",
-        "paper", "pre_market", "post_market", "replay"]
+        "paper", "pre_market", "post_market", "replay", "live"]
 
 
 def _d(v, default: date | None = None) -> date | None:
@@ -65,6 +65,10 @@ def run_named_job(db: Session, job: str, params: dict) -> dict:
         end = _d(params.get("end"), today_ist() - timedelta(days=1))
         start = _d(params.get("start"), end - timedelta(days=int(params.get("days", 400))))
         return ingestion.backfill_eod(db, start, end)
+    if job == "live":
+        from app.services.live_market import refresh_now
+
+        return refresh_now(db)
     if job == "replay":
         return replay(db, _d(params.get("start")), _d(params.get("end")), int(params.get("every", 1)))
     if job == "flows":

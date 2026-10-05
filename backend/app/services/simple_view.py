@@ -275,7 +275,11 @@ def _intraday(db: Session) -> dict:
 def simple_view(db: Session, refresh: bool = False) -> dict:
     run = db.scalar(select(ScanRun).order_by(ScanRun.generated_at.desc()).limit(1))
     regime = latest_regime(db)
-    key = f"simple_cache:{CACHE_VERSION}:{run.id if run else 0}:{regime.id if regime else 0}"
+    from app.services.live_market import live_market
+
+    live = live_market(db)
+    key = (f"simple_cache:{CACHE_VERSION}:{run.id if run else 0}:{regime.id if regime else 0}:"
+           f"{live['as_of'] if live else 'eod'}")
     cached = db.get(AppSetting, key)
     if cached and not refresh:
         return cached.value

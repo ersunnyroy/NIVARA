@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { compactNum, crore, dateIST, inr, int, pct, titleCase, toNum } from "@/lib/format";
+import { compactNum, crore, dateIST, dateTimeIST, inr, int, pct, titleCase, toNum } from "@/lib/format";
 import type { Breadth, FlowRow, IndexQuote, Mover, SectorRow } from "@/lib/types";
-import { EmptyState, NAValue, Pct, Segmented, TableWrap, Td, Th, THead, Tr, cn } from "@/components/ui";
+import { EmptyState, NAValue, Pct, PriceKindBadge, Segmented, TableWrap, Td, Th, THead, Tr, cn } from "@/components/ui";
 
 export function IndicesStrip({ indices }: { indices?: IndexQuote[] }) {
   if (!indices?.length) return <EmptyState compact title="No index data yet">Run the EOD ingestion job to load index closes.</EmptyState>;
@@ -9,11 +9,14 @@ export function IndicesStrip({ indices }: { indices?: IndexQuote[] }) {
     <div className="scroll-thin flex gap-2 overflow-x-auto pb-1">
       {indices.map((i) => (
         <div key={i.name} className="min-w-36 shrink-0 rounded-lg border border-border bg-surface-2/50 px-3 py-2">
-          <p className="truncate text-[11px] font-medium text-muted">{i.name}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="truncate text-[11px] font-medium text-muted">{i.name}</p>
+            {i.kind ? <PriceKindBadge kind={i.kind} /> : null}
+          </div>
           <p className="num text-sm font-semibold">{i.close == null ? "n/a" : inr(i.close, 2).replace("₹", "")}</p>
           <div className="flex items-center justify-between gap-2 text-[11px]">
             <Pct value={i.change_pct} />
-            <span className="text-subtle">{i.date ? dateIST(i.date) : ""}</span>
+            <span className="text-subtle">{i.date ? (i.kind === "delayed_quote" ? dateTimeIST(i.date).replace(/^.*?,\s*/, "") : dateIST(i.date)) : ""}</span>
           </div>
         </div>
       ))}
@@ -28,7 +31,7 @@ export function MoversTable({ rows, showVolume }: { rows?: Mover[]; showVolume?:
       <THead>
         <tr>
           <Th>Stock</Th>
-          <Th align="right">Close</Th>
+          <Th align="right">{rows[0]?.kind === "delayed_quote" ? "Price (delayed)" : "Close"}</Th>
           <Th align="right">Change</Th>
           {showVolume ? <Th align="right">Volume</Th> : null}
         </tr>

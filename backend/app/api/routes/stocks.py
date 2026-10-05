@@ -52,6 +52,9 @@ def search(q: str = "", limit: int = Query(20, le=100), db: Session = Depends(ge
 
 @router.get("/{symbol}")
 def detail(symbol: str, db: Session = Depends(get_db)) -> dict:
+    from app.services.live_market import maybe_refresh
+
+    maybe_refresh(db)
     s = _stock(db, symbol)
     sig = db.scalar(select(Signal).where(Signal.stock_id == s.id).order_by(Signal.id.desc()).limit(1))
     d = stock_brief(s) | {"exchange": s.exchange_code, "face_value": s.face_value, "listing_date": j(s.listing_date),

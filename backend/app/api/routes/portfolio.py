@@ -95,6 +95,9 @@ def delete_portfolio(pid: int, request: Request, user: User = Depends(get_curren
 
 @router.get("/portfolios/{pid}")
 def portfolio_detail(pid: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    from app.services.live_market import maybe_refresh
+
+    maybe_refresh(db)
     return j(ps.holdings(db, own_portfolio(db, user, pid), user.id))
 
 
