@@ -24,7 +24,7 @@ function VoteBar({ score }: { score: number | null }) {
   const s = score === null ? null : Math.max(-100, Math.min(100, score));
   return (
     <div className="flex items-center gap-2">
-      <div className="relative h-2 w-28 rounded-full bg-surface-3" aria-hidden>
+      <div className="relative h-2 flex-1 rounded-full bg-surface-3" aria-hidden>
         <span className="absolute left-1/2 top-[-2px] h-3 w-px bg-border-strong" />
         {s !== null ? (
           <span
@@ -83,10 +83,12 @@ export function RegimeCard({ regime, compact, className }: { regime?: Regime | n
                   {comps.map((c) => {
                     const sc = norm(c.score);
                     return (
-                      <li key={c.name} className="flex items-center justify-between gap-3 text-xs" title={c.reason ?? undefined}>
+                      <li key={c.name} className="flex flex-col gap-1 text-xs" title={c.reason ?? undefined}>
                         <span className="min-w-0">
-                          <span className="font-medium text-fg">{titleCase(c.name)}</span>
-                          {c.weight != null ? <span className="num ml-1 text-subtle">w {num(norm(c.weight) ?? 0, 0)}%</span> : null}
+                          <span className="block truncate">
+                            <span className="font-medium text-fg">{titleCase(c.name)}</span>
+                            {c.weight != null ? <span className="num ml-1 text-subtle">w {num(norm(c.weight) ?? 0, 0)}%</span> : null}
+                          </span>
                           {!compact && c.reason ? <span className="block truncate text-muted">{c.reason}</span> : null}
                         </span>
                         <VoteBar score={sc} />
