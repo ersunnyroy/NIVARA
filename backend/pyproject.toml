@@ -1,0 +1,21 @@
+[project]
+name = "nivara-backend"
+version = "0.1.0"
+description = "NIVARA — Indian stock intelligence, trading analysis & portfolio dashboard (API + workers)"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "C4", "RUF"]
+ignore = ["B008", "UP017", "RUF001", "RUF002", "RUF003", "E731", "E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B017"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning:starlette.*"]

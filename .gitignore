@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+backend/var/
+# Node
+node_modules/
+frontend/.next/
+frontend/out/
+*.tsbuildinfo
+next-env.d.ts
+# Env & secrets
+.env
+.env.*
+!.env.example
+*.pem
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+# Celery
+celerybeat-schedule*

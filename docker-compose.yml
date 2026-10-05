@@ -1,0 +1,80 @@
+# Local development stack. Production overrides: docker-compose.prod.yml
+name: nivara
+
+x-backend-env: &backend-env
+  DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-nivara}:${POSTGRES_PASSWORD:-nivara}@db:5432/${POSTGRES_DB:-nivara}
+  REDIS_URL: redis://redis:6379/0
+  DATA_CACHE_DIR: /data/cache
+  ENVIRONMENT: ${ENVIRONMENT:-development}
+  SECRET_KEY: ${SECRET_KEY:-dev-insecure-change-me}
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+  ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  AI_MODEL: ${AI_MODEL:-claude-opus-5-5}
+  UPSTOX_ACCESS_TOKEN: ${UPSTOX_ACCESS_TOKEN:-}
+  KITE_API_KEY: ${KITE_API_KEY:-}
+  KITE_ACCESS_TOKEN: ${KITE_ACCESS_TOKEN:-}
+  NEWS_RSS_FEEDS: ${NEWS_RSS_FEEDS:-}
+  BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+  BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+  LOG_JSON: ${LOG_JSON:-true}
+
+services:
+  db:
+    # Plain Postgres by default; DB_IMAGE=timescale/timescaledb:latest-pg16 enables TimescaleDB hypertables.
+    image: ${DB_IMAGE:-postgres:16-alpine}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nivara}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nivara}
+      POSTGRES_DB: ${POSTGRES_DB:-nivara}
+    ports: ["${DB_PORT:-5442}:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nivara}"]
+      interval: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports: ["${REDIS_PORT:-6381}:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+
+  backend:
+    build: ./backend
+    environment: *backend-env
+    command: ["sh", "-c", "alembic upgrade head && python -m app.cli seed && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    ports: ["8000:8000"]
+    volumes: [datacache:/data/cache]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    profiles: ["app"]
+
+  worker:
+    build: ./backend
+    environment: *backend-env
+    command: ["celery", "-A", "app.workers.celery_app", "worker", "-l", "info", "-c", "2"]
+    volumes: [datacache:/data/cache]
+    depends_on: [backend]
+    profiles: ["app"]
+
+  beat:
+    build: ./backend
+    environment: *backend-env
+    command: ["celery", "-A", "app.workers.celery_app", "beat", "-l", "info", "--schedule", "/tmp/celerybeat-schedule"]
+    depends_on: [backend]
+    profiles: ["app"]
+
+  frontend:
+    build: ./frontend
+    environment:
+      BACKEND_URL: http://backend:8000
+    ports: ["3000:3000"]
+    depends_on: [backend]
+    profiles: ["app"]
+
+volumes:
+  pgdata:
+  datacache:
