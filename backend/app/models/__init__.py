@@ -35,7 +35,6 @@ from app.models.watch import Alert, AlertEvent, Watchlist, WatchlistItem
 
 __all__ = [
     "OHLCV",
-    "Alembic",
     "Alert",
     "AlertEvent",
     "AppSetting",

@@ -8,6 +8,7 @@ from app.core.timeutil import utcnow
 from app.data import registry
 from app.data.providers.base import ProviderError
 from app.models import PriceQuote, Recommendation, Stock, TaxLot, WatchlistItem
+from app.services.jobs import mark_source
 
 
 def symbols_of_interest(db: Session, limit: int = 400) -> list[Stock]:
@@ -27,10 +28,16 @@ def refresh_quotes(db: Session) -> dict:
     if not stocks:
         return {"quotes": 0}
     by_sym = {s.symbol: s for s in stocks}
+    if hasattr(prov, "isin_by_symbol"):
+        prov.isin_by_symbol.update({s.symbol: s.isin for s in stocks if s.isin})
+    key = "upstox_quotes" if prov.__class__.__name__.startswith("Upstox") else "kite_quotes"
     try:
         res = prov.quotes(list(by_sym))
     except ProviderError as e:
+        mark_source(db, key, ok=False, error=str(e))
+        db.commit()
         return {"error": str(e)}
+    mark_source(db, key, ok=True, data_as_of=utcnow())
     now = utcnow()
     n = 0
     for q in res.data:

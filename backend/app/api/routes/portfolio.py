@@ -40,6 +40,7 @@ class TransactionIn(BaseModel):
     broker: str | None = Field(None, max_length=80)
     charges_total: Decimal | None = Field(None, ge=0)
     notes: str | None = Field(None, max_length=2000)
+    fmv_31jan2018: Decimal | None = Field(None, gt=0, description="Per-share FMV on 31-Jan-2018 (grandfathering)")
 
     @field_validator("trade_date")
     @classmethod
@@ -122,7 +123,7 @@ def add_txn(pid: int, body: TransactionIn, request: Request, user: User = Depend
     try:
         t = ps.add_transaction(db, p, st, body.side.upper(), body.quantity, body.price, body.trade_date,
                                body.segment, body.exchange, body.broker, body.charges_total, body.notes,
-                               trade_time=body.trade_time)
+                               trade_time=body.trade_time, fmv_31jan2018=body.fmv_31jan2018)
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
     audit(db, "transaction.add", user.id, "transaction", t.id,

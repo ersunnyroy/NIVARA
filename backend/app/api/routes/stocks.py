@@ -190,7 +190,7 @@ def signals(symbol: str, db: Session = Depends(get_db)) -> dict:
 def ai_analysis(symbol: str, db: Session = Depends(get_db)) -> dict:
     from app.ai.analysis import get_or_build
 
-    return get_or_build(db, _stock(db, symbol), regenerate=False)
+    return get_or_build(db, _stock(db, symbol), regenerate=False, allow_ai=False)  # cached or deterministic only
 
 
 @router.post("/{symbol}/analysis")

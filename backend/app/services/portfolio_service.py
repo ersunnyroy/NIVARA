@@ -93,7 +93,7 @@ def estimate_charges(db: Session, portfolio: Portfolio, side: str, qty: Decimal,
 def add_transaction(db: Session, portfolio: Portfolio, stock: Stock, side: str, quantity: Decimal, price: Decimal,
                     trade_date: date, segment: str = "delivery", exchange: str = "NSE", broker: str | None = None,
                     charges_total: Decimal | None = None, notes: str | None = None, source: str = "manual",
-                    trade_time: str | None = None) -> Transaction:
+                    trade_time: str | None = None, fmv_31jan2018: Decimal | None = None) -> Transaction:
     if quantity <= 0 or price <= 0:
         raise ValueError("Quantity and price must be positive")
     est = estimate_charges(db, portfolio, side, quantity, price, trade_date, segment, exchange)
@@ -107,7 +107,7 @@ def add_transaction(db: Session, portfolio: Portfolio, stock: Stock, side: str, 
                     charges_total=charges_total if charges_total is not None else Decimal(str(est["total"])),
                     charges_breakdown=_jsonable(breakdown),
                     charges_source="user" if charges_total is not None else "estimated", source=source, notes=notes,
-                    created_at=utcnow())
+                    fmv_31jan2018=fmv_31jan2018 if side.upper() == "BUY" else None, created_at=utcnow())
     db.add(t)
     db.flush()
     try:
@@ -157,7 +157,8 @@ def rebuild_lots(db: Session, portfolio_id: int, stock_id: int) -> None:
                                                              CorporateAction.ex_date > first))
            if c.ex_date and c.ratio_from and c.ratio_to]
     ins = [TxnIn(id=t.id, symbol=stock.symbol, side=t.side, quantity=Decimal(t.quantity), price=Decimal(t.price),
-                 trade_date=t.trade_date, charges=Decimal(t.charges_total or 0), stt=_stt_of(t), segment=t.segment)
+                 trade_date=t.trade_date, charges=Decimal(t.charges_total or 0), stt=_stt_of(t), segment=t.segment,
+                 fmv_31jan2018=t.fmv_31jan2018)
            for t in txns]
     ledger = build_lots(ins, cas)
     lot_ids: dict[str, int] = {}
@@ -165,7 +166,7 @@ def rebuild_lots(db: Session, portfolio_id: int, stock_id: int) -> None:
         row = TaxLot(portfolio_id=portfolio_id, stock_id=stock_id, buy_transaction_id=lot.buy_txn_id,
                      is_bonus=lot.is_bonus, acquired_date=lot.acquired_date, quantity=lot.quantity,
                      remaining_quantity=lot.remaining_quantity, cost_per_share=lot.cost_per_share,
-                     buy_charges=lot.buy_charges, fmv_31jan2018=lot.fmv_31jan2018)
+                     buy_charges=lot.buy_charges, buy_stt=lot.buy_stt, fmv_31jan2018=lot.fmv_31jan2018)
         db.add(row)
         db.flush()
         lot_ids[lot.lot_id] = row.id
@@ -186,7 +187,8 @@ def _ledger(db: Session, portfolio_id: int, stock_id: int, symbol: str) -> list[
     """Open lots as engine objects (from persisted tax_lots)."""
     return [Lot(lot_id=str(r.id), symbol=symbol, segment="delivery", acquired_date=r.acquired_date,
                 quantity=Decimal(r.quantity), remaining_quantity=Decimal(r.remaining_quantity),
-                cost_per_share=Decimal(r.cost_per_share), buy_charges=Decimal(r.buy_charges or 0), buy_stt=ZERO,
+                cost_per_share=Decimal(r.cost_per_share), buy_charges=Decimal(r.buy_charges or 0),
+                buy_stt=Decimal(r.buy_stt or 0),
                 buy_txn_id=r.buy_transaction_id, is_bonus=r.is_bonus, fmv_31jan2018=r.fmv_31jan2018)
             for r in db.scalars(select(TaxLot).where(TaxLot.portfolio_id == portfolio_id, TaxLot.stock_id == stock_id,
                                                      TaxLot.remaining_quantity > 0))]
@@ -211,6 +213,8 @@ def gain_lines_from_rows(db: Session, rows) -> list:
     for r in rows:
         lot = db.get(TaxLot, r.lot_id)
         sym = db.get(Stock, r.stock_id).symbol
+        buy_stt = (Decimal(lot.buy_stt or 0) * Decimal(r.quantity) / Decimal(lot.quantity)
+                   if lot and lot.quantity else ZERO)
         m = Match(lot_id=str(r.lot_id), buy_txn_id=lot.buy_transaction_id if lot else None,
                   sell_txn_id=r.sell_transaction_id, symbol=sym, segment="intraday" if r.term == "SPEC" else "delivery",
                   quantity=Decimal(r.quantity), acquired_date=r.acquired_date, sold_date=r.sold_date,
@@ -218,7 +222,8 @@ def gain_lines_from_rows(db: Session, rows) -> list:
                   sell_price=Decimal(r.sale_value) / Decimal(r.quantity) if r.quantity else ZERO,
                   purchase_value=Decimal(r.purchase_value), sale_value=Decimal(r.sale_value),
                   buy_charges_alloc=Decimal(r.buy_charges), sell_charges_alloc=Decimal(r.sell_charges),
-                  buy_stt_alloc=ZERO, sell_stt_alloc=Decimal(r.stt_total or 0), holding_days=r.holding_days,
+                  buy_stt_alloc=buy_stt, sell_stt_alloc=Decimal(r.stt_total or 0) - buy_stt,
+                  holding_days=r.holding_days,
                   is_bonus=bool(lot.is_bonus) if lot else False, fmv_31jan2018=lot.fmv_31jan2018 if lot else None)
         lines.append(capital_gain_for_match(m, rb))
     return lines
@@ -284,6 +289,16 @@ def holdings(db: Session, portfolio: Portfolio, user_id: int, include_monitor: b
             res, levels = _monitor(db, portfolio.id, st, pos, regime)
             pos["monitor"] = asdict(res) | {"levels": levels}
         positions.append(pos)
+    # Portfolio-level estimate in ONE pass so the annual LTCG exemption and set-offs are applied once
+    # (per-position figures above are "if only this position were sold").
+    all_lots = []
+    for sid in by_stock:
+        cp = prices.get(sid)
+        if cp and cp.price is not None:
+            all_lots += [(lot, Decimal(str(cp.price))) for lot in _ledger(db, portfolio.id, sid, db.get(Stock, sid).symbol)]
+    port_unreal = unrealized_tax_estimate(all_lots, as_of, rb, realized_ctx, charges_engine=ce) if all_lots else None
+    if port_unreal is not None:
+        tot["tax"] = Decimal(str(port_unreal.estimated_tax_if_sold))
     realized_summary = summarize_realized(db, realized_rows, profile, ty)
     summary = {
         "invested": float(tot["invested"]), "current_value": float(tot["value"]),
@@ -291,6 +306,8 @@ def holdings(db: Session, portfolio: Portfolio, user_id: int, include_monitor: b
         "charges_incl_estimated_exit": float(tot["charges"]) + realized_summary["charges"],
         "estimated_tax_unrealized": float(tot["tax"]), "estimated_tax_realized": realized_summary["estimated_tax"],
         "tax_year": ty,
+        "estimated_tax_unrealized_status": port_unreal.status if port_unreal else None,
+        "estimated_tax_unrealized_incomplete_reasons": port_unreal.incomplete_reasons if port_unreal else [],
     }
     summary["gross_pnl"] = summary["unrealized_gross_pnl"] + realized_summary["capital_gain_gross"]
     summary["net_pnl"] = (summary["unrealized_gross_pnl"] - float(tot["charges"]) - summary["estimated_tax_unrealized"]
@@ -364,7 +381,30 @@ def _monitor(db: Session, portfolio_id: int, st: Stock, pos: dict, regime) -> tu
         macd_below_signal=(ind["macd"] < ind["macd_signal"]) if ind.get("macd") is not None and ind.get("macd_signal") is not None else None,
         regime=regime.regime if regime else None, worst_recent_news=worst.sentiment if worst else None,
         negative_news_headline=worst.headline[:140] if worst else None,
-        upcoming_results_sessions=(ev - today_ist()).days if ev else None,
+        upcoming_results_sessions=_cal(db).sessions_between(today_ist(), ev) if ev else None,
+        current_score=_latest_score(db, st.id), best_alternative_score=_best_score(db),
         data_as_of=pos.get("price_as_of"),
     ))
     return res, {"stop": stop, "target1": t1, "target2": t2, "trailing_stop": trail, "source": source}
+
+
+def _cal(db: Session):
+    from app.market_calendar.calendar import load_calendar
+
+    return load_calendar(db)
+
+
+def _latest_score(db: Session, stock_id: int) -> float | None:
+    from app.models import Signal
+
+    return db.scalar(select(Signal.score).where(Signal.stock_id == stock_id).order_by(Signal.id.desc()).limit(1))
+
+
+def _best_score(db: Session) -> float | None:
+    from app.models import ScanRun
+
+    run = db.scalar(select(ScanRun).where(ScanRun.status == "ok").order_by(ScanRun.generated_at.desc()).limit(1))
+    if run is None:
+        return None
+    return db.scalar(select(Recommendation.score).where(Recommendation.run_id == run.id)
+                     .order_by(Recommendation.score.desc()).limit(1))

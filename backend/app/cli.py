@@ -46,7 +46,10 @@ def main(argv: list[str]) -> int:
     if cmd == "bootstrap":
         days = int(rest[rest.index("--days") + 1]) if "--days" in rest else 420
         with session_scope() as db:
-            for job, params in (("seed", {}), ("securities", {}), ("holidays", {}), ("backfill", {"days": days}),
+            run_named_job(db, "seed", {})
+            _bootstrap_admin(db)
+            db.commit()
+            for job, params in (("securities", {}), ("holidays", {}), ("backfill", {"days": days}),
                                 ("corporate_actions", {}), ("event_calendar", {}), ("flows", {}), ("news", {}),
                                 ("fno", {}), ("fno_snapshots", {}), ("breadth", {}), ("regime", {}),
                                 ("fundamentals", {"universe": "nifty50"}), ("scan", {"trigger": "bootstrap"}),

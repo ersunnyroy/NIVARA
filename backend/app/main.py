@@ -48,7 +48,7 @@ async def request_context(request: Request, call_next):
     token = request_id_var.set(rid)
     start = time.perf_counter()
     try:
-        ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "?").split(",")[0]
+        ip = request.client.host if request.client else "?"
         if request.url.path.startswith(settings.api_prefix) and not request.url.path.endswith("/health"):
             ok, _ = limiter.hit(f"api:{ip}", settings.rate_limit_per_minute)
             if not ok:

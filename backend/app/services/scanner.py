@@ -224,8 +224,13 @@ def run_scan(db: Session, as_of: date | None = None, trigger: str = "scheduled",
 
 
 def closed_outcomes(db: Session) -> int:
-    return db.scalar(select(func.count()).select_from(RecommendationOutcome).where(
-        RecommendationOutcome.status.in_(["target1", "target2", "target3", "stopped", "expired"]))) or 0
+    """Closed outcomes of LIVE recommendations only (historical replays never unlock live_consideration)."""
+    return db.scalar(
+        select(func.count()).select_from(RecommendationOutcome)
+        .join(Recommendation, Recommendation.id == RecommendationOutcome.recommendation_id)
+        .join(ScanRun, ScanRun.id == Recommendation.run_id)
+        .where(RecommendationOutcome.status.in_(["target1", "target2", "stopped", "expired"]),
+               ScanRun.trigger.not_in(["replay", "backfill"]))) or 0
 
 
 def _suitability(ev: Evaluation, track: int, min_track: int, missing_weight: float) -> str:

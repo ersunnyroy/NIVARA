@@ -40,6 +40,8 @@ class Transaction(Base):
     charges_breakdown: Mapped[dict[str, Any]] = mapped_column(default=dict)
     charges_source: Mapped[str] = mapped_column(String(20), default="estimated")  # estimated | user | broker_import
     source: Mapped[str] = mapped_column(String(20), default="manual")  # manual | import | paper | system
+    # Fair market value on 31-Jan-2018 per share (s.112A grandfathering; only for shares bought on/before that date).
+    fmv_31jan2018: Mapped[Decimal | None] = mapped_column(Money)
     external_id: Mapped[str | None] = mapped_column(String(80))
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime())
@@ -75,6 +77,7 @@ class TaxLot(Base):
     remaining_quantity: Mapped[Decimal] = mapped_column(Qty)
     cost_per_share: Mapped[Decimal] = mapped_column(Money)
     buy_charges: Mapped[Decimal] = mapped_column(Money, default=Decimal("0"))
+    buy_stt: Mapped[Decimal] = mapped_column(Money, default=Decimal("0"))
     fmv_31jan2018: Mapped[Decimal | None] = mapped_column(Money)  # grandfathering input, user-supplied
 
 

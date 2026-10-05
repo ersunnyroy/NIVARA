@@ -141,7 +141,7 @@ def deterministic(fs: dict) -> dict:
     }
 
 
-def get_or_build(db: Session, stock: Stock, regenerate: bool = False) -> dict:
+def get_or_build(db: Session, stock: Stock, regenerate: bool = False, allow_ai: bool = True) -> dict:
     fs = fact_sheet(db, stock)
     if fs.get("status") != "ok":
         return {"status": fs.get("status"), "message": fs.get("message"), "sections": None}
@@ -152,6 +152,9 @@ def get_or_build(db: Session, stock: Stock, regenerate: bool = False) -> dict:
     base = {"generated_at": j(utcnow()), "data_as_of": fs["data_as_of"], "prompt_version": PROMPT_VERSION,
             "deterministic_fallback": deterministic(fs), "fact_sheet": fs,
             "disclaimer": "AI explanation of computed data. Not investment advice; no outcome is certain."}
+    if ai_configured() and not allow_ai:
+        return base | {"status": "not_generated", "model": None, "sections": base["deterministic_fallback"],
+                       "guardrail_flags": [], "message": "AI explanation not generated yet — use Regenerate (POST)."}
     if not ai_configured():
         out = base | {"status": "ai_not_configured", "model": None, "sections": base["deterministic_fallback"],
                       "guardrail_flags": [], "message": "Set ANTHROPIC_API_KEY to enable AI explanations."}

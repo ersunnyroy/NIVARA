@@ -14,7 +14,7 @@ select = ["E", "F", "W", "I", "B", "UP", "C4", "RUF"]
 ignore = ["B008", "UP017", "RUF001", "RUF002", "RUF003", "E731", "E501"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["B017"]
+"tests/*" = ["B017", "C408"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,4 +1,11 @@
-"""Split/bonus back-adjustment derived from exchange-published previous closes.
+"""Split/bonus back-adjustment.
+
+NOTE (verified 2026-10): the current NSE UDiFF bhavcopy does NOT adjust ``PrvsClsgPric`` on ex-dates, so
+``detect_adjustments`` finds nothing for UDiFF data. The authoritative path is
+``app.services.ingestion.derive_adjustments_from_actions`` (exchange corporate-action records, price-verified).
+``detect_adjustments`` is kept for sources that do publish adjusted previous closes.
+
+Original method notes:
 
 Method: on an ex-date NSE publishes the *adjusted* previous close in the bhavcopy (``PrvsClsgPric`` /
 ``PREVCLOSE``). For consecutive trading rows (t-1, t) of one symbol::

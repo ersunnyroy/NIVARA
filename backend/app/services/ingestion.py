@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
@@ -38,7 +39,7 @@ INDEX_LISTS = ("nifty50", "niftynext50", "nifty100", "nifty200", "nifty500")
 
 
 def _stock_map(db: Session) -> dict[str, int]:
-    return dict(db.execute(select(Stock.symbol, Stock.id).where(Stock.exchange_code == "NSE")))
+    return dict(db.execute(select(Stock.symbol, Stock.id).where(Stock.exchange_code == "NSE")).all())
 
 
 # ---------------------------------------------------------------- reference
@@ -189,14 +190,72 @@ def derive_adjustments(db: Session, session: date, todays: dict[int, dict]) -> i
     n = 0
     now = utcnow()
     for sid, ex_date, factor, pc_exchange, last_close in candidates:
-        if True:
-            upsert(db, PriceAdjustment, [{"stock_id": sid, "ex_date": ex_date, "factor": factor,
-                                          "method": "exchange_prev_close", "created_at": now,
-                                          "note": f"NSE previous close {pc_exchange} vs our last close {last_close}"}],
-                   ["stock_id", "ex_date"], ["factor", "note"])
-            n += 1
+        upsert(db, PriceAdjustment, [{"stock_id": sid, "ex_date": ex_date, "factor": factor,
+                                      "method": "exchange_prev_close", "created_at": now,
+                                      "note": f"NSE previous close {pc_exchange} vs our last close {last_close}"}],
+               ["stock_id", "ex_date"], ["factor", "note"])
+        n += 1
     db.commit()
     return n
+
+
+def corporate_action_factor(action_type: str, ratio_from: float | None, ratio_to: float | None) -> float | None:
+    """Price factor applied to bars before the ex-date.
+    split: face value ratio_from → ratio_to (₹10 → ₹2 ⇒ 0.2); bonus a:b (a new per b held) ⇒ b / (a + b)."""
+    if not ratio_from or not ratio_to or ratio_from <= 0 or ratio_to <= 0:
+        return None
+    if action_type == "split":
+        return ratio_to / ratio_from
+    if action_type == "bonus":
+        return ratio_to / (ratio_from + ratio_to)
+    return None
+
+
+def derive_adjustments_from_actions(db: Session, tolerance: float = 0.35) -> dict:
+    """Record split/bonus adjustment factors from exchange corporate-action records.
+
+    The current NSE bhavcopy does not adjust the previous close on ex-dates, so the published actions are the
+    authoritative source. Each factor is cross-checked against the observed close-to-close ratio across the
+    ex-date; a mismatch beyond ±35% is not applied (logged for review) because the record may be mis-dated.
+    Only ex-dates that have already passed are applied (point-in-time)."""
+    applied, skipped, unverifiable = 0, [], 0
+    now = utcnow()
+    # Combine all split/bonus records sharing an ex-date (de-duplicating repeated filings of the same action).
+    groups: dict[tuple[int, date], dict[tuple, CorporateAction]] = defaultdict(dict)
+    for ca in db.scalars(select(CorporateAction).where(CorporateAction.action_type.in_(["split", "bonus"]),
+                                                       CorporateAction.ex_date.is_not(None),
+                                                       CorporateAction.ex_date <= today_ist())):
+        groups[(ca.stock_id, ca.ex_date)][(ca.action_type, ca.ratio_from, ca.ratio_to)] = ca
+    for (stock_id, ex_date), acts in groups.items():
+        factors = [corporate_action_factor(*k) for k in acts]
+        if any(f is None for f in factors):
+            continue
+        f = math.prod(factors)
+        if abs(f - 1) < 1e-6:
+            continue
+        before = db.scalar(select(OHLCV.close).where(OHLCV.stock_id == stock_id, OHLCV.date < ex_date)
+                           .order_by(OHLCV.date.desc()).limit(1))
+        on = db.scalar(select(OHLCV.close).where(OHLCV.stock_id == stock_id, OHLCV.date >= ex_date)
+                       .order_by(OHLCV.date).limit(1))
+        note = "; ".join(ca.subject for ca in acts.values()) + f" (combined factor {f:.4f})"
+        if before and on:
+            observed = on / before
+            if abs(math.log(observed / f)) > math.log(1 + tolerance):
+                skipped.append(f"{stock_id}:{ex_date}: observed {observed:.3f} vs factor {f:.3f}")
+                continue
+            note += f"; observed close ratio {observed:.3f}"
+        else:
+            unverifiable += 1
+            note += "; not price-verified (no bars around ex-date)"
+        upsert(db, PriceAdjustment, [{"stock_id": stock_id, "ex_date": ex_date, "factor": f,
+                                      "method": "corporate_action", "note": note[:1000], "created_at": now}],
+               ["stock_id", "ex_date"], ["factor", "method", "note"])
+        applied += 1
+    db.commit()
+    if skipped:
+        log.warning("corporate-action factors not applied (price mismatch): %s", skipped[:10])
+    return {"applied": applied, "skipped_mismatch": len(skipped), "unverifiable": unverifiable,
+            "examples_skipped": skipped[:10]}
 
 
 def backfill_eod(db: Session, start: date, end: date, calendar=None) -> dict:
@@ -256,8 +315,9 @@ def ingest_corporate_actions(db: Session, start: date, end: date) -> dict:
                          "ratio_to": c.ratio_to, "amount": c.amount, "source": res.provenance.source,
                          "retrieved_at": now, "raw": c.raw})
         upsert(db, CorporateAction, rows, ["stock_id", "ex_date", "subject"])
+        db.commit()
         j.rows = len(rows)
-        j.details = {"rows": len(rows)}
+        j.details = {"rows": len(rows), "adjustments": derive_adjustments_from_actions(db)}
         return j.details
 
 

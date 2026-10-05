@@ -7,9 +7,10 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 
@@ -23,8 +24,8 @@ class Settings(BaseSettings):
     debug: bool = False
     api_prefix: str = "/api"
     secret_key: str = Field("dev-insecure-change-me-please-use-a-long-random-value", description="Signs session tokens. MUST be overridden in production.")
-    encryption_key: str | None = Field(None, description="Fernet key for encrypting provider secrets stored in DB.")
-    allowed_origins: list[str] = ["http://localhost:3000"]
+    encryption_key: str | None = Field(None, description="Optional Fernet key for secrets stored in the DB (reserved).")
+    allowed_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
     session_ttl_minutes: int = 60 * 12
     cookie_secure: bool = False
     timezone: str = "Asia/Kolkata"
@@ -35,7 +36,6 @@ class Settings(BaseSettings):
     celery_broker_url: str | None = None
     celery_result_backend: str | None = None
     data_cache_dir: Path = BACKEND_DIR / "var" / "cache"
-    use_timescale: bool = True
 
     # --- rate limiting ---
     rate_limit_per_minute: int = 240
@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     upstox_access_token: str | None = None
     kite_api_key: str | None = None
     kite_access_token: str | None = None
-    news_rss_feeds: list[str] = Field(default_factory=list, description="Extra reputable RSS feeds (secondary sources).")
+    news_rss_feeds: Annotated[list[str], NoDecode] = Field(default_factory=list, description="Extra reputable RSS feeds (secondary sources).")
 
     # --- AI ---
     anthropic_api_key: str | None = None
@@ -83,8 +83,19 @@ class Settings(BaseSettings):
     @classmethod
     def _split_csv(cls, v):
         if isinstance(v, str):
+            v = v.strip()
+            if v.startswith("["):
+                import json
+
+                return json.loads(v)
             return [s.strip() for s in v.split(",") if s.strip()]
         return v
+
+    @field_validator("secret_key", mode="before")
+    @classmethod
+    def _secret(cls, v):
+        # An empty value (e.g. copied from .env.example) falls back to the dev default; production rejects it below.
+        return v or "dev-insecure-change-me-please-use-a-long-random-value"
 
     @property
     def is_production(self) -> bool:
@@ -102,6 +113,6 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     s = Settings()
-    if s.is_production and s.secret_key.startswith("dev-insecure"):
-        raise RuntimeError("SECRET_KEY must be set in production")
+    if s.is_production and (s.secret_key.startswith("dev-insecure") or len(s.secret_key) < 32):
+        raise RuntimeError("SECRET_KEY must be set to a random value of at least 32 characters in production")
     return s

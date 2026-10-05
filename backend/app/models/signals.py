@@ -40,7 +40,7 @@ class ScanRun(Base):
     session_date: Mapped[date] = mapped_column(Date, index=True)  # the session the ideas are FOR
     generated_at: Mapped[datetime] = mapped_column(UTCDateTime())
     data_as_of: Mapped[datetime | None] = mapped_column(UTCDateTime())
-    status: Mapped[str] = mapped_column(String(20))  # ok | data_unavailable | data_stale | partial | error
+    status: Mapped[str] = mapped_column(String(20))  # running | ok | ok_no_candidates | data_unavailable | data_stale
     universe_size: Mapped[int] = mapped_column(Integer, default=0)
     eligible_count: Mapped[int] = mapped_column(Integer, default=0)
     rejection_counts: Mapped[dict[str, Any]] = mapped_column(default=dict)

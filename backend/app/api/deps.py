@@ -47,7 +47,6 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
 
 
 def client_ip(request: Request) -> str | None:
-    fwd = request.headers.get("x-forwarded-for")
-    if fwd:
-        return fwd.split(",")[0].strip()
+    """Peer address. Behind the bundled nginx, uvicorn's --proxy-headers sets this from X-Forwarded-For, which
+    nginx overwrites with the real client address (never trust a client-supplied header directly)."""
     return request.client.host if request.client else None

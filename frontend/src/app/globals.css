@@ -1,0 +1,179 @@
+@import "tailwindcss";
+
+/* Dark mode is driven by data-theme on <html> (set before paint by the inline theme script). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  color-scheme: light;
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --surface-2: #f1f4f8;
+  --surface-3: #e8edf3;
+  --border: #e1e6ed;
+  --border-strong: #c9d1dc;
+  --fg: #0e1626;
+  --muted: #5c6b80;
+  --subtle: #8a96a8;
+  --accent: #2554d8;
+  --accent-fg: #ffffff;
+  --accent-soft: #e6edfd;
+  --up: #0a8a55;
+  --up-soft: #e3f5ec;
+  --down: #cf2b2b;
+  --down-soft: #fcebeb;
+  --warn: #b26b00;
+  --warn-soft: #fff4e0;
+  --info: #1f6fb2;
+  --info-soft: #e5f1fb;
+  --violet: #6b46c1;
+  --violet-soft: #f0ebfb;
+  --ring: #2554d8;
+  --shadow: 0 1px 2px rgb(15 23 42 / 0.05), 0 1px 1px rgb(15 23 42 / 0.03);
+  --chart-grid: #eef1f5;
+  --chart-text: #5c6b80;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0a0d13;
+    --surface: #11161f;
+    --surface-2: #161c27;
+    --surface-3: #1d2532;
+    --border: #222b39;
+    --border-strong: #334055;
+    --fg: #e5e9f0;
+    --muted: #93a0b4;
+    --subtle: #6b778b;
+    --accent: #6d95ff;
+    --accent-fg: #0a0d13;
+    --accent-soft: #18233d;
+    --up: #2fc07a;
+    --up-soft: #0f2a1e;
+    --down: #f2605e;
+    --down-soft: #2f1416;
+    --warn: #f0a83a;
+    --warn-soft: #2d2210;
+    --info: #5aa9e6;
+    --info-soft: #10243a;
+    --violet: #a78bfa;
+    --violet-soft: #221a3a;
+    --ring: #6d95ff;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+    --chart-grid: #1a212d;
+    --chart-text: #93a0b4;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0a0d13;
+  --surface: #11161f;
+  --surface-2: #161c27;
+  --surface-3: #1d2532;
+  --border: #222b39;
+  --border-strong: #334055;
+  --fg: #e5e9f0;
+  --muted: #93a0b4;
+  --subtle: #6b778b;
+  --accent: #6d95ff;
+  --accent-fg: #0a0d13;
+  --accent-soft: #18233d;
+  --up: #2fc07a;
+  --up-soft: #0f2a1e;
+  --down: #f2605e;
+  --down-soft: #2f1416;
+  --warn: #f0a83a;
+  --warn-soft: #2d2210;
+  --info: #5aa9e6;
+  --info-soft: #10243a;
+  --violet: #a78bfa;
+  --violet-soft: #221a3a;
+  --ring: #6d95ff;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+  --chart-grid: #1a212d;
+  --chart-text: #93a0b4;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-up: var(--up);
+  --color-up-soft: var(--up-soft);
+  --color-down: var(--down);
+  --color-down-soft: var(--down-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-violet: var(--violet);
+  --color-violet-soft: var(--violet-soft);
+  --color-ring: var(--ring);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --shadow-card: var(--shadow);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tabular numerals everywhere numbers line up. */
+.num,
+table {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+@keyframes nivara-shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-3) 50%, var(--surface-2) 100%);
+  background-size: 800px 100%;
+  animation: nivara-shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+
+/* Thin scrollbars inside scrollable table containers. */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+dialog::backdrop {
+  background: rgb(5 8 14 / 0.55);
+  backdrop-filter: blur(2px);
+}

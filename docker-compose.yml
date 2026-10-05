@@ -1,6 +1,8 @@
 # Local development stack. Production overrides: docker-compose.prod.yml
 name: nivara
 
+# All settings from .env are passed to backend containers (env_file); the values below override the ones that
+# must point at the compose network.
 x-backend-env: &backend-env
   DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-nivara}:${POSTGRES_PASSWORD:-nivara}@db:5432/${POSTGRES_DB:-nivara}
   REDIS_URL: redis://redis:6379/0
@@ -43,6 +45,7 @@ services:
 
   backend:
     build: ./backend
+    env_file: [{path: .env, required: false}]
     environment: *backend-env
     command: ["sh", "-c", "alembic upgrade head && python -m app.cli seed && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
     ports: ["8000:8000"]
@@ -54,6 +57,7 @@ services:
 
   worker:
     build: ./backend
+    env_file: [{path: .env, required: false}]
     environment: *backend-env
     command: ["celery", "-A", "app.workers.celery_app", "worker", "-l", "info", "-c", "2"]
     volumes: [datacache:/data/cache]
@@ -62,13 +66,17 @@ services:
 
   beat:
     build: ./backend
+    env_file: [{path: .env, required: false}]
     environment: *backend-env
     command: ["celery", "-A", "app.workers.celery_app", "beat", "-l", "info", "--schedule", "/tmp/celerybeat-schedule"]
     depends_on: [backend]
     profiles: ["app"]
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        BACKEND_URL: http://backend:8000  # Next.js rewrites are fixed at build time
     environment:
       BACKEND_URL: http://backend:8000
     ports: ["3000:3000"]

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import date
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -33,8 +34,8 @@ def _run(bid: int) -> None:
     try:
         with session_scope() as db:
             execute_backtest(db, bid)
-    except Exception:
-        pass
+    except Exception:  # status/error is recorded on the backtest row
+        logging.getLogger(__name__).exception("backtest %s failed", bid)
 
 
 @router.get("")
